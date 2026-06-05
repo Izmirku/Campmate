@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampMate — Discover Georgia's Outdoors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,700;1,300&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+/* ── RESET & VARS ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --pine:#1b3a2d; --fern:#2d6a4f; --sage:#52796f; --moss:#84a98c;
+  --mist:#cad2c5; --cream:#f4f1ec; --off:#fdfcf8; --bark:#6b4c3b;
+  --amber:#c8873a; --ink:#0f100d; --mid:#68695e; --muted:#96978d;
+  --border:#dedad0; --surface:#f4f2ec;
+  --font-serif:'Cormorant Garamond',serif;
+  --font-sans:'Outfit',sans-serif;
+  --rad:4px; --shadow:0 2px 12px rgba(0,0,0,.08);
+}
+html,body{height:100%;font-family:var(--font-sans);font-weight:300;background:var(--off);color:var(--ink);overflow-x:hidden;}
+a{text-decoration:none;color:inherit;}
+button,input,select,textarea{font-family:var(--font-sans);}
+h1,h2,h3{font-family:var(--font-serif);}
+
+/* ── LAYOUT ── */
+#app{display:flex;flex-direction:column;min-height:100vh;}
+.page{display:none;flex:1;min-height:calc(100vh - 58px);}
+.page.active{display:block;}
+.page.active.flex-page{display:flex;flex-direction:column;}
+.container{max-width:1100px;margin:0 auto;padding:0 24px;}
+
+/* ── NAV ── */
+#nav{
+  position:sticky;top:0;z-index:500;height:58px;
+  background:var(--pine);display:flex;align-items:center;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.nav-inner{width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 24px;}
+.nav-logo{font-family:var(--font-serif);font-size:20px;font-weight:700;color:var(--off);letter-spacing:.03em;cursor:pointer;}
+.nav-links{display:flex;align-items:center;gap:4px;}
+.nav-link{padding:6px 14px;font-size:12px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:rgba(253,252,248,.6);border-radius:var(--rad);cursor:pointer;transition:background .15s,color .15s;border:none;background:none;}
+.nav-link:hover{color:var(--off);background:rgba(255,255,255,.08);}
+.nav-link.active{color:var(--off);background:rgba(255,255,255,.12);}
+.nav-right{display:flex;align-items:center;gap:8px;}
+.nav-user{font-size:12px;color:rgba(253,252,248,.6);}
+.nav-btn{padding:7px 16px;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;border:none;cursor:pointer;border-radius:var(--rad);transition:all .15s;}
+.btn-primary{background:var(--moss);color:var(--off);}
+.btn-primary:hover{background:var(--sage);}
+.btn-secondary{background:transparent;color:rgba(253,252,248,.65);border:1px solid rgba(255,255,255,.2);}
+.btn-secondary:hover{background:rgba(255,255,255,.1);color:var(--off);}
+.btn-green{background:var(--fern);color:var(--off);border:none;padding:9px 20px;font-size:12px;font-weight:500;letter-spacing:.05em;border-radius:var(--rad);cursor:pointer;transition:background .15s;}
+.btn-green:hover{background:var(--pine);}
+.btn-outline{background:transparent;color:var(--fern);border:1px solid var(--fern);padding:8px 18px;font-size:12px;font-weight:500;border-radius:var(--rad);cursor:pointer;transition:all .15s;}
+.btn-outline:hover{background:var(--fern);color:var(--off);}
+.btn-sm{padding:6px 12px;font-size:11px;}
+
+/* ── COMMON COMPONENTS ── */
+.card{background:var(--off);border:1px solid var(--border);border-radius:var(--rad);box-shadow:var(--shadow);}
+.badge{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:2px;border:1px solid var(--border);color:var(--mid);}
+.badge-green{border-color:#aacba2;color:var(--fern);background:#f0f8ee;}
+.badge-amber{border-color:#d4aa72;color:var(--amber);background:#fdf3e3;}
+.badge-bark{border-color:#c4a090;color:var(--bark);background:#faeae6;}
+.badge-blue{border-color:#90aac4;color:#3a5a7a;background:#e6eef8;}
+.section-title{font-family:var(--font-serif);font-size:clamp(26px,3vw,38px);font-weight:300;color:var(--ink);margin-bottom:8px;}
+.section-title em{font-style:italic;color:var(--fern);}
+.section-sub{font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:32px;}
+.eyebrow{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--sage);margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.eyebrow::before{content:'';width:16px;height:1px;background:var(--sage);}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+input,textarea,select{padding:9px 14px;border:1px solid var(--border);border-radius:var(--rad);font-size:13px;color:var(--ink);background:var(--off);outline:none;width:100%;transition:border-color .2s;}
+input:focus,textarea:focus,select:focus{border-color:var(--fern);}
+textarea{resize:vertical;min-height:80px;}
+label{font-size:12px;color:var(--mid);margin-bottom:4px;display:block;}
+.form-group{margin-bottom:14px;}
+.stars{color:#c8873a;font-size:14px;}
+.alert{padding:12px 16px;border-radius:var(--rad);font-size:13px;margin-bottom:12px;}
+.alert-error{background:#faeae6;border:1px solid #e8b8a8;color:#7a3020;}
+.alert-success{background:#f0f8ee;border:1px solid #aacba2;color:#2a5a2a;}
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:14px;}
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty h3{font-family:var(--font-serif);font-size:22px;margin-bottom:8px;color:var(--mid);}
+.divider{height:1px;background:var(--border);margin:20px 0;}
+.page-header{background:var(--pine);padding:40px 24px 36px;color:var(--off);}
+.page-header h1{font-family:var(--font-serif);font-size:clamp(28px,4vw,44px);font-weight:300;margin-bottom:6px;}
+.page-header p{font-size:14px;color:rgba(253,252,248,.6);max-width:520px;}
+
+/* ═══════════════ HOME PAGE ═══════════════ */
+.hero{min-height:88vh;background:var(--pine);position:relative;overflow:hidden;display:flex;align-items:center;}
+.hero-bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse 60% 50% at 70% 40%,rgba(45,106,79,.35) 0%,transparent 65%),
+  radial-gradient(ellipse 40% 30% at 85% 15%,rgba(45,106,79,.18) 0%,transparent 55%);}
+.hero-topo{position:absolute;right:0;top:0;bottom:0;width:55%;opacity:.3;pointer-events:none;}
+.hero-body{position:relative;z-index:2;padding:0 60px;max-width:680px;}
+.hero-eyebrow{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--moss);margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+.hero-eyebrow::before{content:'';width:20px;height:1px;background:var(--moss);}
+.hero-h{font-family:var(--font-serif);font-size:clamp(56px,8vw,108px);line-height:.95;letter-spacing:-.02em;color:var(--off);margin-bottom:24px;font-weight:300;}
+.hero-h em{font-style:italic;color:var(--moss);}
+.hero-sub{font-size:15px;line-height:1.85;color:rgba(253,252,248,.55);max-width:460px;margin-bottom:36px;}
+.hero-btns{display:flex;gap:10px;flex-wrap:wrap;}
+.hero-btn-p{background:var(--moss);color:var(--off);border:none;padding:13px 28px;font-size:12px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;border-radius:var(--rad);transition:background .2s;}
+.hero-btn-p:hover{background:var(--sage);}
+.hero-btn-g{background:transparent;color:rgba(253,252,248,.65);border:1px solid rgba(253,252,248,.22);padding:13px 28px;font-size:12px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;border-radius:var(--rad);transition:all .2s;}
+.hero-btn-g:hover{background:rgba(255,255,255,.08);color:var(--off);}
+.hero-stats{position:absolute;bottom:40px;right:60px;display:flex;gap:3px;}
+.stat-chip{background:rgba(253,252,248,.06);border:1px solid rgba(253,252,248,.1);padding:14px 22px;backdrop-filter:blur(8px);}
+.stat-n{font-family:var(--font-serif);font-size:30px;font-weight:300;color:var(--off);line-height:1;}
+.stat-l{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:rgba(253,252,248,.35);margin-top:4px;}
+
+/* Home sections */
+.home-section{padding:80px 0;}
+.home-section:nth-child(even){background:var(--surface);}
+.spot-card{background:var(--off);border:1px solid var(--border);border-radius:var(--rad);overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;}
+.spot-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1);}
+.spot-card-img{height:180px;background:linear-gradient(135deg,var(--pine),var(--fern));display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden;position:relative;}
+.spot-card-img img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;transition:transform .3s;}
+.spot-card:hover .spot-card-img img{transform:scale(1.05);}
+.spot-card-img .emoji-fallback{position:relative;z-index:1;}
+.spot-card-body{padding:16px;}
+.spot-card-body h3{font-family:var(--font-serif);font-size:17px;font-weight:700;margin-bottom:4px;}
+.spot-card-meta{font-size:11px;color:var(--muted);margin-bottom:8px;}
+.spot-card-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+.rating{font-size:12px;color:var(--amber);}
+
+/* ═══════════════ MAP PAGE ═══════════════ */
+.map-page{display:none;flex:1;flex-direction:column;}
+.map-page.active{display:flex;}
+.map-layout{display:flex;flex:1;overflow:hidden;}
+.map-sidebar{width:320px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow-y:auto;background:var(--off);}
+.map-sidebar-header{padding:16px;border-bottom:1px solid var(--border);}
+.map-sidebar-header h3{font-family:var(--font-serif);font-size:18px;font-weight:700;margin-bottom:10px;}
+.map-search{position:relative;margin-bottom:8px;}
+.map-search input{padding-left:32px;}
+.map-search::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;}
+.map-filters{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.filter-chip{font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border:1px solid var(--border);border-radius:2px;cursor:pointer;transition:all .15s;background:transparent;color:var(--mid);}
+.filter-chip:hover,.filter-chip.on{background:var(--fern);color:var(--off);border-color:var(--fern);}
+.spot-list-item{padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.spot-list-item:hover,.spot-list-item.active{background:var(--surface);}
+.sli-name{font-family:var(--font-serif);font-size:15px;font-weight:700;margin-bottom:2px;}
+.sli-meta{font-size:11px;color:var(--muted);}
+.sli-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:6px;}
+#map-container{flex:1;position:relative;}
+#leaflet-map{width:100%;height:100%;}
+.add-spot-btn{position:absolute;bottom:20px;right:20px;z-index:400;background:var(--fern);color:var(--off);border:none;padding:11px 18px;font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:var(--rad);box-shadow:0 4px 12px rgba(0,0,0,.15);transition:background .2s;}
+.add-spot-btn:hover{background:var(--pine);}
+
+/* ═══════════════ SPOT DETAIL ═══════════════ */
+.spot-detail-page{padding:0 0 60px;}
+.spot-hero{background:linear-gradient(135deg,var(--pine) 0%,var(--fern) 100%);height:320px;display:flex;align-items:flex-end;padding:28px 40px;position:relative;overflow:hidden;}
+.spot-hero-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.spot-hero-overlay{position:absolute;inset:0;background:linear-gradient(to top, rgba(15,16,13,.85) 0%, rgba(15,16,13,.3) 60%, transparent 100%);}
+.spot-hero-inner{position:relative;z-index:2;color:var(--off);}
+.spot-hero h1{font-family:var(--font-serif);font-size:clamp(28px,4vw,44px);font-weight:300;margin-bottom:6px;}
+.spot-hero-meta{display:flex;gap:14px;align-items:center;font-size:13px;color:rgba(253,252,248,.7);}
+.spot-content{padding:36px 40px;max-width:1100px;margin:0 auto;}
+.spot-grid{display:grid;grid-template-columns:1fr 300px;gap:36px;align-items:start;}
+.spot-section{margin-bottom:28px;}
+.spot-section h3{font-family:var(--font-serif);font-size:20px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.info-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad);padding:20px;}
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.info-row:last-child{border-bottom:none;}
+.info-label{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;}
+.info-val{color:var(--ink);font-weight:400;}
+.review-item{padding:16px 0;border-bottom:1px solid var(--border);}
+.review-item:last-child{border-bottom:none;}
+.review-header{display:flex;justify-content:space-between;margin-bottom:6px;}
+.review-author{font-weight:500;font-size:13px;}
+.review-date{font-size:11px;color:var(--muted);}
+.review-text{font-size:13px;color:var(--mid);line-height:1.7;}
+.fav-btn{width:100%;padding:11px;border:1px solid var(--fern);color:var(--fern);background:transparent;border-radius:var(--rad);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;margin-bottom:10px;}
+.fav-btn.saved{background:var(--fern);color:var(--off);}
+.fav-btn:hover{background:var(--fern);color:var(--off);}
+
+/* ═══════════════ FORUM ═══════════════ */
+.forum-layout{display:grid;grid-template-columns:220px 1fr;gap:28px;padding:36px 0;}
+.forum-cats{position:sticky;top:80px;}
+.forum-cat-item{padding:10px 14px;border-radius:var(--rad);cursor:pointer;font-size:13px;color:var(--stone);transition:background .15s;display:flex;justify-content:space-between;align-items:center;}
+.forum-cat-item:hover,.forum-cat-item.on{background:var(--surface);color:var(--fern);}
+.cat-badge{background:var(--surface);color:var(--muted);font-size:10px;padding:2px 7px;border-radius:10px;border:1px solid var(--border);}
+.forum-cat-item.on .cat-badge{background:var(--fern);color:var(--off);border-color:var(--fern);}
+.forum-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.sort-btns{display:flex;gap:4px;}
+.sort-btn{font-size:11px;padding:5px 11px;border:1px solid var(--border);border-radius:2px;cursor:pointer;background:transparent;color:var(--mid);transition:all .15s;}
+.sort-btn.on{background:var(--ink);color:var(--off);border-color:var(--ink);}
+.thread-card{background:var(--off);border:1px solid var(--border);border-radius:var(--rad);padding:18px 20px;margin-bottom:10px;cursor:pointer;transition:box-shadow .2s,border-color .2s;}
+.thread-card:hover{border-color:var(--moss);box-shadow:var(--shadow);}
+.thread-title{font-family:var(--font-serif);font-size:17px;font-weight:700;margin-bottom:5px;color:var(--ink);}
+.thread-preview{font-size:12px;color:var(--mid);line-height:1.6;margin-bottom:10px;}
+.thread-meta{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--muted);}
+.thread-author span{color:var(--fern);}
+.thread-stats{display:flex;gap:10px;margin-left:auto;}
+
+/* Forum post detail */
+.post-detail{max-width:780px;margin:0 auto;padding:36px 0 60px;}
+.post-body-text{font-size:14px;line-height:1.9;color:var(--mid);white-space:pre-wrap;}
+.comment-item{padding:14px 0;border-bottom:1px solid var(--border);}
+.comment-header{display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px;}
+.comment-author{font-weight:500;color:var(--ink);}
+.comment-date{color:var(--muted);}
+.like-btn{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--mid);background:none;border:1px solid var(--border);padding:5px 12px;border-radius:var(--rad);cursor:pointer;transition:all .15s;}
+.like-btn:hover,.like-btn.liked{background:var(--fern);color:var(--off);border-color:var(--fern);}
+
+/* ═══════════════ GROUPS ═══════════════ */
+.groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:36px 0;}
+.group-card{background:var(--off);border:1px solid var(--border);border-radius:var(--rad);padding:20px;cursor:pointer;transition:box-shadow .2s,border-color .2s;}
+.group-card:hover{border-color:var(--moss);box-shadow:var(--shadow);}
+.group-card h3{font-family:var(--font-serif);font-size:18px;font-weight:700;margin-bottom:6px;}
+.group-card-meta{font-size:12px;color:var(--mid);margin-bottom:12px;line-height:1.6;}
+.group-card-footer{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--border);}
+
+/* ═══════════════ MESSAGES ═══════════════ */
+.msg-layout{display:flex;flex:1;overflow:hidden;height:calc(100vh - 58px);}
+.msg-sidebar{width:260px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--off);}
+.msg-sidebar-header{padding:14px 16px;border-bottom:1px solid var(--border);}
+.msg-sidebar-header h3{font-family:var(--font-serif);font-size:17px;font-weight:700;}
+.user-list-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s;}
+.user-list-item:hover,.user-list-item.active{background:var(--surface);}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--fern);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--off);flex-shrink:0;}
+.user-name{font-size:13px;font-weight:400;color:var(--ink);}
+.user-region{font-size:11px;color:var(--muted);}
+.unread-dot{width:8px;height:8px;border-radius:50%;background:var(--fern);flex-shrink:0;margin-left:auto;}
+.msg-chat{flex:1;display:flex;flex-direction:column;background:var(--surface);}
+.msg-chat-header{padding:14px 20px;background:var(--off);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px;}
+.msg-bubble{max-width:62%;padding:10px 14px;border-radius:var(--rad);font-size:13px;line-height:1.6;}
+.msg-bubble.mine{background:var(--fern);color:var(--off);align-self:flex-end;}
+.msg-bubble.theirs{background:var(--off);color:var(--ink);border:1px solid var(--border);align-self:flex-start;}
+.msg-bubble-time{font-size:10px;opacity:.6;margin-top:3px;}
+.msg-input-area{padding:14px 20px;background:var(--off);border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;}
+.msg-input-area input{flex:1;}
+.msg-placeholder{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;}
+
+/* ═══════════════ PROFILE ═══════════════ */
+.profile-header{background:var(--pine);padding:40px 40px 32px;color:var(--off);display:flex;gap:24px;align-items:flex-end;}
+.profile-avatar-big{width:72px;height:72px;border-radius:50%;background:var(--fern);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:500;color:var(--off);border:2px solid rgba(255,255,255,.2);flex-shrink:0;}
+.profile-info h2{font-family:var(--font-serif);font-size:30px;font-weight:300;margin-bottom:4px;}
+.profile-info p{font-size:13px;color:rgba(253,252,248,.6);}
+.profile-body{max-width:900px;margin:0 auto;padding:36px 40px;}
+.profile-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:28px;}
+.ptab{padding:10px 20px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:var(--mid);transition:all .15s;}
+.ptab.on{color:var(--fern);border-bottom-color:var(--fern);}
+
+/* ═══════════════ ADMIN ═══════════════ */
+.admin-layout{display:grid;grid-template-columns:200px 1fr;gap:0;flex:1;}
+.admin-sidebar{background:var(--pine);padding:20px 0;}
+.admin-nav-item{padding:10px 20px;font-size:13px;color:rgba(253,252,248,.55);cursor:pointer;transition:background .15s;border-left:2px solid transparent;}
+.admin-nav-item:hover,.admin-nav-item.on{background:rgba(255,255,255,.06);color:var(--off);border-left-color:var(--moss);}
+.admin-main{padding:32px;overflow-y:auto;}
+.stat-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
+.stat-card{background:var(--off);border:1px solid var(--border);border-radius:var(--rad);padding:20px;}
+.stat-card-n{font-family:var(--font-serif);font-size:40px;font-weight:300;color:var(--fern);line-height:1;}
+.stat-card-l{font-size:12px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.08em;}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table th{text-align:left;padding:10px 14px;background:var(--surface);border-bottom:2px solid var(--border);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);font-weight:400;}
+.data-table td{padding:10px 14px;border-bottom:1px solid var(--border);}
+.data-table tr:hover td{background:var(--surface);}
+
+/* ── MODALS ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--off);border-radius:var(--rad);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.modal h2{font-family:var(--font-serif);font-size:24px;font-weight:700;margin-bottom:18px;}
+.modal-close{float:right;cursor:pointer;font-size:20px;color:var(--muted);background:none;border:none;line-height:1;}
+
+/* ── AUTH PAGE ── */
+.auth-page{min-height:100vh;background:var(--pine);display:flex;align-items:center;justify-content:center;}
+.auth-box{background:var(--off);border-radius:var(--rad);padding:36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.auth-box h1{font-family:var(--font-serif);font-size:28px;font-weight:700;margin-bottom:4px;}
+.auth-box p{font-size:13px;color:var(--mid);margin-bottom:24px;}
+.auth-switch{font-size:13px;text-align:center;margin-top:16px;color:var(--mid);}
+.auth-switch a{color:var(--fern);cursor:pointer;font-weight:500;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast-item{background:var(--ink);color:var(--off);padding:12px 18px;border-radius:var(--rad);font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .25s ease;min-width:220px;}
+.toast-item.success{background:var(--fern);}
+.toast-item.error{background:#7a3020;}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .hero-body{padding:0 24px;}
+  .hero-stats{right:24px;}
+  .map-sidebar{width:260px;}
+  .forum-layout{grid-template-columns:1fr;}.forum-cats{display:none;}
+  .grid-3,.grid-4{grid-template-columns:repeat(2,1fr);}
+  .spot-grid{grid-template-columns:1fr;}
+  .admin-layout{grid-template-columns:1fr;}
+  .admin-sidebar{display:none;}
+  .msg-sidebar{width:200px;}
+  .profile-header{flex-direction:column;align-items:flex-start;}
+  .profile-body{padding:24px;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- NAV -->
+  <nav id="nav">
+    <div class="nav-inner">
+      <div class="nav-logo" onclick="go('home')">CampMate</div>
+      <div class="nav-links">
+        <button class="nav-link" onclick="go('home')">Home</button>
+        <button class="nav-link" onclick="go('map')">Map</button>
+        <button class="nav-link" onclick="go('forum')">Forum</button>
+        <button class="nav-link" onclick="go('groups')">Groups</button>
+        <button class="nav-link" onclick="go('messages')">Messages</button>
+      </div>
+      <div class="nav-right" id="nav-right"></div>
+    </div>
+  </nav>
+
+  <!-- PAGES -->
+  <div id="page-home"   class="page"></div>
+  <div id="page-map"    class="page"></div>
+  <div id="page-spot"   class="page"></div>
+  <div id="page-forum"  class="page"></div>
+  <div id="page-post"   class="page"></div>
+  <div id="page-groups" class="page"></div>
+  <div id="page-messages" class="page"></div>
+  <div id="page-profile" class="page"></div>
+  <div id="page-admin"  class="page"></div>
+  <div id="page-auth"   class="page"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+
+
+
+let STATE = {
+  currentPage: 'home',
+  token: localStorage.getItem('cm_token') || null,
+  user: JSON.parse(localStorage.getItem('cm_user') || 'null'),
+  mapInstance: null,
+  mapMarkers: [],
+  spots: [],
+  mapFilter: { type:'all', region:'all', difficulty:'all', search:'' },
+  sidebarFilter: 'all',
+  activeSpotId: null,
+  forums: { category:'all', sort:'newest' },
+  adminTab: 'stats',
+  msgPeer: null,
+  profileTab: 'info',
+  authMode: 'login',
+};
+
+
+
+
+const photoCache = {};  
+
+async function getSpotPhoto(spot) {
+  
+  if (spot.id in photoCache) return photoCache[spot.id];
+  try {
+    const r = await fetch(`${API}/photo?spotId=${spot.id}&region=${encodeURIComponent(spot.region)}&type=${spot.type}`);
+    if (!r.ok) { photoCache[spot.id] = null; return null; }
+    const { url } = await r.json();
+    photoCache[spot.id] = url || null;
+    return photoCache[spot.id];
+  } catch { photoCache[spot.id] = null; return null; }
+}
+
+
+function spotCardImg(spot, photoUrl) {
+  const emoji = spot.type === 'camp' ? '🏕️' : '🥾';
+  if (photoUrl) {
+    return `<div class="spot-card-img">
+      <img src="${photoUrl}" alt="${spot.name}" loading="lazy" onerror="this.style.display='none'"/>
+    </div>`;
+  }
+  return `<div class="spot-card-img"><span class="emoji-fallback">${emoji}</span></div>`;
+}
+
+
+async function loadPhotosAndRender(spots, renderFn) {
+  renderFn(spots, {});
+  await Promise.all(spots.slice(0, 12).map(s => getSpotPhoto(s)));
+  renderFn(spots, photoCache);
+}
+
+const API = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : window.location.origin + '/api';
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type':'application/json' } };
+  if (STATE.token) opts.headers['Authorization'] = `Bearer ${STATE.token}`;
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch(API + path, opts);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  } catch(e) {
+    throw e;
+  }
+}
+
+
+
+
+function go(page, params) {
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.remove('active','flex-page');
+    p.style.display = '';
+  });
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  STATE.currentPage = page;
+  const el = document.getElementById(`page-${page}`);
+  if (el) {
+    el.classList.add('active');
+    
+    if (page === 'map' || page === 'messages') el.classList.add('flex-page');
+  }
+  const link = document.querySelector(`.nav-link[onclick*="'${page}'"]`);
+  if (link) link.classList.add('active');
+  renderNav();
+  const renders = { home: renderHome, map: renderMap, forum: renderForum,
+    groups: renderGroups, messages: renderMessages, profile: renderProfile,
+    admin: renderAdmin, auth: renderAuth };
+  if (renders[page]) renders[page](params);
+  window.scrollTo(0,0);
+}
+
+
+
+
+function renderNav() {
+  const r = document.getElementById('nav-right');
+  if (STATE.user) {
+    const isAdmin = STATE.user.role === 'admin';
+    r.innerHTML = `
+      ${isAdmin ? `<button class="nav-btn btn-secondary" onclick="go('admin')">Admin</button>` : ''}
+      <button class="nav-btn btn-secondary" onclick="go('profile')">${STATE.user.name}</button>
+      <button class="nav-btn btn-secondary" onclick="logout()">Logout</button>
+    `;
+  } else {
+    r.innerHTML = `
+      <button class="nav-btn btn-secondary" onclick="go('auth','login')">Login</button>
+      <button class="nav-btn btn-primary" onclick="go('auth','register')">Sign Up</button>
+    `;
+  }
+}
+
+
+
+
+function renderAuth(mode='login') {
+  STATE.authMode = mode;
+  const p = document.getElementById('page-auth');
+  const isLogin = mode !== 'register';
+  p.innerHTML = `
+  <div style="min-height:100vh;background:var(--pine);display:flex;align-items:center;justify-content:center;">
+    <div class="auth-box">
+      <h1>${isLogin ? 'Welcome back' : 'Join CampMate'}</h1>
+      <p>${isLogin ? 'Sign in to your account' : 'Create your free account'}</p>
+      <div id="auth-alert"></div>
+      ${!isLogin ? `<div class="form-group"><label>Full Name</label><input id="a-name" placeholder="Your name"/></div>` : ''}
+      <div class="form-group"><label>Email</label><input id="a-email" type="email" placeholder="your@email.com"/></div>
+      <div class="form-group"><label>Password</label><input id="a-pw" type="password" placeholder="••••••••"/></div>
+      ${!isLogin ? `
+        <div class="grid-2">
+          <div class="form-group"><label>Region</label>
+            <select id="a-region">${['Tbilisi','Kazbegi','Svaneti','Tusheti','Borjomi','Racha','Kakheti','Adjara','Imereti','Samegrelo'].map(r=>`<option>${r}</option>`).join('')}</select>
+          </div>
+          <div class="form-group"><label>Hiking Level</label>
+            <select id="a-level"><option>Beginner</option><option>Intermediate</option><option>Advanced</option><option>Expert</option></select>
+          </div>
+        </div>
+      ` : ''}
+      <button class="btn-green" style="width:100%;padding:12px;" onclick="doAuth(${isLogin})">${isLogin ? 'Sign In' : 'Create Account'}</button>
+      <div class="auth-switch">
+        ${isLogin ? `Don't have an account? <a onclick="go('auth','register')">Sign up</a>` : `Already have an account? <a onclick="go('auth','login')">Sign in</a>`}
+      </div>
+      ${isLogin ? `<p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;">Demo: admin@campmate.ge / admin123 &nbsp;|&nbsp; nino@example.com / pass123</p>` : ''}
+    </div>
+  </div>`;
+}
+
+async function doAuth(isLogin) {
+  const alertEl = document.getElementById('auth-alert');
+  try {
+    let data;
+    if (isLogin) {
+      data = await api('POST', '/auth/login', {
+        email: document.getElementById('a-email').value,
+        password: document.getElementById('a-pw').value,
+      });
+    } else {
+      data = await api('POST', '/auth/register', {
+        name: document.getElementById('a-name').value,
+        email: document.getElementById('a-email').value,
+        password: document.getElementById('a-pw').value,
+        region: document.getElementById('a-region').value,
+        level: document.getElementById('a-level').value,
+      });
+    }
+    STATE.token = data.token;
+    STATE.user = data.user;
+    localStorage.setItem('cm_token', data.token);
+    localStorage.setItem('cm_user', JSON.stringify(data.user));
+    toast(`Welcome, ${data.user.name}!`, 'success');
+    go('home');
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+  }
+}
+
+function logout() {
+  STATE.token = null; STATE.user = null;
+  localStorage.removeItem('cm_token'); localStorage.removeItem('cm_user');
+  go('home');
+  toast('Logged out');
+}
+
+
+
+
+async function renderHome() {
+  const p = document.getElementById('page-home');
+  p.innerHTML = `
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <svg class="hero-topo" viewBox="0 0 600 500" fill="none">
+      <path d="M20,460 C60,420 100,380 140,320 C165,285 180,255 215,225 C235,208 250,188 278,168 C298,152 314,128 340,110 C366,92 386,78 412,68 C438,58 458,62 478,74 C504,90 524,114 550,144" stroke="rgba(132,169,140,0.25)" stroke-width="1.5" fill="none"/>
+      <path d="M20,460 C55,432 88,406 120,364 C144,332 162,298 196,270 C218,253 236,233 262,213 C282,197 298,174 322,156" stroke="rgba(132,169,140,0.15)" stroke-width="1" fill="none"/>
+      <path d="M50,460 C85,438 115,418 145,382 C168,354 186,322 218,295 C240,278 258,258 284,238" stroke="rgba(132,169,140,0.1)" stroke-width="1" fill="none"/>
+      <circle cx="340" cy="110" r="5" fill="rgba(132,169,140,0.5)"/>
+      <circle cx="340" cy="110" r="2.5" fill="rgba(132,169,140,0.9)"/>
+    </svg>
+    <div class="hero-body">
+      <div class="hero-eyebrow">საქართველო · Georgia</div>
+      <h1 class="hero-h">Discover<br><em>Georgia's</em><br>outdoors</h1>
+      <p class="hero-sub">Find campsites, plan hikes, and connect with fellow adventurers across Georgia's mountains, forests, and valleys.</p>
+      <div class="hero-btns">
+        <button class="hero-btn-p" onclick="go('map')">Explore the Map</button>
+        <button class="hero-btn-g" onclick="go('forum')">Join the Forum</button>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-chip"><div class="stat-n">10+</div><div class="stat-l">Regions</div></div>
+      <div class="stat-chip"><div class="stat-n">30+</div><div class="stat-l">Locations</div></div>
+      <div class="stat-chip"><div class="stat-n">Free</div><div class="stat-l">To join</div></div>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <div class="container">
+      <div class="eyebrow">Featured Campsites</div>
+      <h2 class="section-title">Top <em>camping spots</em></h2>
+      <p class="section-sub">Hand-picked sites across Georgia's best outdoor regions.</p>
+      <div class="grid-4" id="home-camps"></div>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <div class="container">
+      <div class="eyebrow">Popular Trails</div>
+      <h2 class="section-title">Iconic <em>hiking trails</em></h2>
+      <p class="section-sub">From easy forest walks to demanding high-altitude routes.</p>
+      <div class="grid-4" id="home-hikes"></div>
+    </div>
+  </section>
+
+  <section style="background:var(--fern);padding:72px 0;">
+    <div class="container" style="text-align:center;color:var(--off);">
+      <h2 style="font-family:var(--font-serif);font-size:clamp(28px,4vw,46px);font-weight:300;margin-bottom:12px;">Ready to explore <em style="font-style:italic;">Georgia?</em></h2>
+      <p style="font-size:15px;color:rgba(253,252,248,.6);max-width:460px;margin:0 auto 28px;">Create a free account to save spots, join trip groups, and connect with the community.</p>
+      <button class="hero-btn-p" onclick="${STATE.user ? "go('map')" : "go('auth','register')"}">
+        ${STATE.user ? 'Open the Map' : 'Get Started — Free'}
+      </button>
+    </div>
+  </section>`;
+
+  try {
+    const { spots } = await api('GET', '/spots');
+    STATE.spots = spots;
+    const camps = spots.filter(s => s.type === 'camp').slice(0,4);
+    const hikes = spots.filter(s => s.type === 'hike').slice(0,4);
+    const DIFF_BADGE = { Easy:'badge-green', Moderate:'badge-amber', Challenging:'badge-amber', Hard:'badge-bark', Expert:'badge-bark' };
+
+    const renderCards = (arr, containerId, photos) => {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = arr.map(s => `
+        <div class="spot-card" onclick="goSpot('${s.id}')">
+          ${spotCardImg(s, photos[s.id])}
+          <div class="spot-card-body">
+            <h3>${s.name}</h3>
+            <div class="spot-card-meta">${s.region}</div>
+            <p style="font-size:12px;color:var(--mid);line-height:1.6;">${s.desc.substring(0,90)}…</p>
+            <div class="spot-card-row">
+              <span class="badge ${DIFF_BADGE[s.difficulty]||'badge'}">${s.difficulty}</span>
+              <span class="rating">★ ${s.rating || '–'}</span>
+            </div>
+          </div>
+        </div>`).join('');
+    };
+
+    
+    await loadPhotosAndRender(camps, (arr, photos) => renderCards(arr, 'home-camps', photos));
+    
+    await loadPhotosAndRender(hikes, (arr, photos) => renderCards(arr, 'home-hikes', photos));
+
+  } catch(e) {
+    console.error('Home load error:', e);
+    const c = document.getElementById('home-camps');
+    if (c) c.innerHTML = `<p style="color:var(--bark);font-size:13px;grid-column:1/-1;">⚠️ Could not load spots. Make sure the server is running on port 3000. (${e.message})</p>`;
+  }
+}
+
+
+
+
+async function renderMap() {
+  const p = document.getElementById('page-map');
+  const REGIONS = ['All','Kazbegi','Svaneti','Tusheti','Borjomi','Racha','Kakheti','Adjara','Imereti','Samegrelo'];
+  p.innerHTML = `
+  <div class="page-header" style="padding:20px 24px;">
+    <h1>Explore Georgia</h1>
+    <p>All camping spots and hiking trails across Georgia's major outdoor regions</p>
+  </div>
+  <div class="map-layout" style="flex:1;overflow:hidden;height:calc(100vh - 116px);">
+    <div class="map-sidebar" style="height:100%;overflow-y:auto;">
+      <div class="map-sidebar-header">
+        <h3>Spots & Trails</h3>
+        <div class="map-search"><input id="map-search" placeholder="Search spots…" oninput="applyMapFilters()"/></div>
+        <div class="map-filters">
+          <button class="filter-chip on" data-type="all" onclick="setMapType(this,'all')">All</button>
+          <button class="filter-chip" data-type="camp" onclick="setMapType(this,'camp')">⛺ Camp</button>
+          <button class="filter-chip" data-type="hike" onclick="setMapType(this,'hike')">🥾 Hike</button>
+        </div>
+        <div class="map-filters" style="margin-top:4px;">
+          ${REGIONS.map((r,i) => `<button class="filter-chip${i===0?' on':''}" onclick="setMapRegion(this,'${r.toLowerCase()}')">${r}</button>`).join('')}
+        </div>
+      </div>
+      <div id="map-spot-list" style="overflow-y:auto;flex:1;"></div>
+    </div>
+    <div id="map-container" style="flex:1;position:relative;">
+      <div id="leaflet-map" style="width:100%;height:100%;min-height:400px;"></div>
+      ${STATE.user ? `<button class="add-spot-btn" onclick="openAddSpotModal()">+ Add Spot</button>` : ''}
+    </div>
+  </div>`;
+
+  p.style.display = 'flex';
+  p.style.flexDirection = 'column';
+
+  // Load spots then init map
+  if (!STATE.spots.length) {
+    const { spots } = await api('GET', '/spots');
+    STATE.spots = spots;
+  }
+
+  // Init Leaflet
+  if (STATE.mapInstance) { STATE.mapInstance.remove(); STATE.mapInstance = null; }
+  setTimeout(() => {
+    const map = L.map('leaflet-map', { center:[42.0, 43.5], zoom:7, minZoom:6, maxZoom:15 });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:'© OpenStreetMap contributors', maxZoom:19 }).addTo(map);
+    STATE.mapInstance = map;
+    STATE.mapMarkers = [];
+    renderMapSpots();
+    renderMapSidebar();
+  }, 80);
+}
+
+function renderMapSpots() {
+  const map = STATE.mapInstance;
+  if (!map) return;
+  STATE.mapMarkers.forEach(m => map.removeLayer(m));
+  STATE.mapMarkers = [];
+  const filtered = getFilteredSpots();
+  filtered.forEach(spot => {
+    const color = spot.type === 'camp' ? '#2d6a4f' : '#6b4c3b';
+    const icon = L.divIcon({
+      html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,.3);"></div>`,
+      className:'', iconSize:[12,12], iconAnchor:[6,6]
+    });
+    const m = L.marker([spot.lat, spot.lng], { icon })
+      .addTo(map)
+      .bindPopup(`
+        <div style="font-family:'Outfit',sans-serif;min-width:160px;">
+          <strong style="font-size:14px;">${spot.name}</strong><br>
+          <span style="font-size:11px;color:#666;">${spot.region} · ${spot.type === 'camp' ? '⛺ Campsite' : '🥾 Trail'}</span><br>
+          <span style="font-size:11px;color:#666;">${spot.difficulty}</span><br>
+          <a href="#" onclick="goSpot('${spot.id}');return false;" style="font-size:12px;color:#2d6a4f;font-weight:500;">View details →</a>
+        </div>`);
+    STATE.mapMarkers.push(m);
+  });
+}
+
+function renderMapSidebar() {
+  const filtered = getFilteredSpots();
+  const DIFF_BADGE = { Easy:'badge-green', Moderate:'badge-amber', Challenging:'badge-amber', Hard:'badge-bark', Expert:'badge-bark' };
+  document.getElementById('map-spot-list').innerHTML = filtered.length
+    ? filtered.map(s => {
+        const photo = photoCache[s.id];
+        return `
+        <div class="spot-list-item" onclick="goSpot('${s.id}')">
+          ${photo ? `<img src="${photo}" style="width:100%;height:90px;object-fit:cover;border-radius:2px;margin-bottom:8px;" loading="lazy" onerror="this.remove()"/>` : ''}
+          <div class="sli-name">${s.name}</div>
+          <div class="sli-meta">${s.region} · ${s.type === 'camp' ? '⛺' : '🥾'}</div>
+          <div class="sli-bottom">
+            <span class="badge ${DIFF_BADGE[s.difficulty]||''}">${s.difficulty}</span>
+            <span class="rating" style="font-size:11px;">★ ${s.rating||'–'}</span>
+          </div>
+        </div>`;
+      }).join('')
+    : `<div class="empty" style="padding:30px;"><p>No spots match filters.</p></div>`;
+}
+
+function getFilteredSpots() {
+  let spots = STATE.spots;
+  const f = STATE.mapFilter;
+  if (f.type !== 'all') spots = spots.filter(s => s.type === f.type);
+  if (f.region !== 'all') spots = spots.filter(s => s.region.toLowerCase() === f.region);
+  if (f.search) { const t = f.search.toLowerCase(); spots = spots.filter(s => s.name.toLowerCase().includes(t) || s.region.toLowerCase().includes(t)); }
+  return spots;
+}
+
+function setMapType(el, type) {
+  document.querySelectorAll('[data-type]').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  STATE.mapFilter.type = type;
+  applyMapFilters();
+}
+
+function setMapRegion(el, region) {
+  el.parentElement.querySelectorAll('.filter-chip').forEach(b => {
+    if (!b.hasAttribute('data-type')) b.classList.remove('on');
+  });
+  el.classList.add('on');
+  STATE.mapFilter.region = region;
+  applyMapFilters();
+}
+
+function applyMapFilters() {
+  STATE.mapFilter.search = document.getElementById('map-search')?.value || '';
+  renderMapSpots();
+  renderMapSidebar();
+}
+
+function openAddSpotModal() {
+  if (!STATE.user) { go('auth','login'); return; }
+  const REGIONS = ['Kazbegi','Svaneti','Tusheti','Borjomi','Racha','Kakheti','Adjara','Imereti','Samegrelo'];
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>Add New Spot</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Location must be within Georgia (lat 41–44, lng 40–47)</p>
+    <div id="add-spot-alert"></div>
+    <div class="form-group"><label>Name</label><input id="as-name" placeholder="Spot name"/></div>
+    <div class="grid-2">
+      <div class="form-group"><label>Type</label>
+        <select id="as-type"><option value="camp">Campsite</option><option value="hike">Hiking Trail</option></select>
+      </div>
+      <div class="form-group"><label>Region</label>
+        <select id="as-region">${REGIONS.map(r=>`<option>${r}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label>Latitude (41–44)</label><input id="as-lat" type="number" step="0.0001" placeholder="42.65"/></div>
+      <div class="form-group"><label>Longitude (40–47)</label><input id="as-lng" type="number" step="0.0001" placeholder="44.63"/></div>
+    </div>
+    <div class="form-group"><label>Difficulty</label>
+      <select id="as-diff"><option>Easy</option><option>Moderate</option><option>Challenging</option><option>Hard</option><option>Expert</option></select>
+    </div>
+    <div class="form-group"><label>Description</label><textarea id="as-desc" placeholder="Describe the spot…"></textarea></div>
+    <button class="btn-green" style="width:100%;padding:11px;" onclick="submitSpot()">Add Spot</button>
+  `);
+}
+
+async function submitSpot() {
+  const alertEl = document.getElementById('add-spot-alert');
+  try {
+    const data = await api('POST', '/spots', {
+      name: document.getElementById('as-name').value,
+      type: document.getElementById('as-type').value,
+      region: document.getElementById('as-region').value,
+      lat: document.getElementById('as-lat').value,
+      lng: document.getElementById('as-lng').value,
+      difficulty: document.getElementById('as-diff').value,
+      desc: document.getElementById('as-desc').value,
+    });
+    STATE.spots.push(data.spot);
+    closeModal();
+    renderMapSpots();
+    renderMapSidebar();
+    toast('Spot added!', 'success');
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+  }
+}
+
+
+
+
+async function goSpot(id) {
+  go('spot');
+  const p = document.getElementById('page-spot');
+  p.innerHTML = `<div class="loading">Loading…</div>`;
+  try {
+    const { spot, reviews } = await api('GET', `/spots/${id}`);
+    const favIds = STATE.user ? (await api('GET', '/favorites')).spots.map(s => s.id) : [];
+    const isFaved = favIds.includes(id);
+    const DIFF_BADGE = { Easy:'badge-green', Moderate:'badge-amber', Challenging:'badge-amber', Hard:'badge-bark', Expert:'badge-bark' };
+
+    // Fetch photo (uses cache if already loaded)
+    const photoUrl = await getSpotPhoto(spot);
+
+    p.innerHTML = `
+    <div class="spot-detail-page">
+      <div class="spot-hero">
+        ${photoUrl ? `<img class="spot-hero-photo" src="${photoUrl}" alt="${spot.name}" onerror="this.remove()"/>` : ''}
+        ${photoUrl ? `<div class="spot-hero-overlay"></div>` : ''}
+        <div class="spot-hero-inner">
+          <span class="badge" style="margin-bottom:10px;background:rgba(255,255,255,.15);color:var(--off);border:none;">${spot.type === 'camp' ? '⛺ Campsite' : '🥾 Hiking Trail'}</span>
+          <h1>${spot.name}</h1>
+          <div class="spot-hero-meta">
+            <span>📍 ${spot.region}</span>
+            <span class="badge ${DIFF_BADGE[spot.difficulty]||''}" style="font-size:10px;">${spot.difficulty}</span>
+            <span>★ ${spot.rating} (${spot.ratingCount} reviews)</span>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--pine);padding:10px 40px;">
+        <button class="btn-outline btn-sm" style="color:rgba(253,252,248,.7);border-color:rgba(255,255,255,.2);" onclick="history.back()">← Back</button>
+      </div>
+      <div class="spot-content">
+        <div class="spot-grid">
+          <div>
+            <div class="spot-section">
+              <h3>About this ${spot.type === 'camp' ? 'campsite' : 'trail'}</h3>
+              <p style="font-size:14px;line-height:1.85;color:var(--mid);">${spot.desc}</p>
+            </div>
+            ${spot.facilities?.length ? `
+            <div class="spot-section">
+              <h3>Facilities</h3>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${spot.facilities.map(f=>`<span class="badge">${f}</span>`).join('')}
+              </div>
+            </div>` : ''}
+            ${spot.safetyNotes ? `
+            <div class="spot-section">
+              <h3>⚠️ Safety Notes</h3>
+              <div style="background:#fdf3e3;border:1px solid #d4aa72;border-radius:var(--rad);padding:14px 16px;font-size:13px;color:#6b4c1a;line-height:1.75;">
+                ${spot.safetyNotes}
+              </div>
+            </div>` : ''}
+            <div class="spot-section">
+              <h3>Reviews</h3>
+              ${reviews.length ? reviews.map(r => `
+                <div class="review-item">
+                  <div class="review-header">
+                    <span class="review-author">${r.userName}</span>
+                    <span class="review-date">${r.createdAt.slice(0,10)}</span>
+                  </div>
+                  <div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+                  <p class="review-text">${r.text}</p>
+                </div>`).join('') : '<p style="color:var(--muted);font-size:13px;">No reviews yet. Be the first!</p>'}
+              ${STATE.user ? `
+              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+                <h4 style="font-size:14px;margin-bottom:10px;">Leave a review</h4>
+                <div class="form-group">
+                  <label>Rating</label>
+                  <select id="rv-rating"><option value="5">★★★★★ (5)</option><option value="4">★★★★☆ (4)</option><option value="3">★★★☆☆ (3)</option><option value="2">★★☆☆☆ (2)</option><option value="1">★☆☆☆☆ (1)</option></select>
+                </div>
+                <div class="form-group"><textarea id="rv-text" placeholder="Share your experience…"></textarea></div>
+                <button class="btn-green btn-sm" onclick="submitReview('${spot.id}')">Post Review</button>
+              </div>` : `<p style="margin-top:12px;font-size:13px;color:var(--muted);"><a style="color:var(--fern);cursor:pointer;" onclick="go('auth','login')">Log in</a> to leave a review.</p>`}
+            </div>
+          </div>
+          <div>
+            <div class="info-box" style="margin-bottom:16px;">
+              ${STATE.user ? `<button class="fav-btn${isFaved?' saved':''}" id="fav-btn" onclick="toggleFav('${spot.id}')">${isFaved ? '♥ Saved' : '♡ Save to Favourites'}</button>` : ''}
+              <div class="info-row"><span class="info-label">Region</span><span class="info-val">${spot.region}</span></div>
+              <div class="info-row"><span class="info-label">Type</span><span class="info-val">${spot.type === 'camp' ? 'Campsite' : 'Hiking Trail'}</span></div>
+              <div class="info-row"><span class="info-label">Difficulty</span><span class="info-val">${spot.difficulty}</span></div>
+              <div class="info-row"><span class="info-label">Rating</span><span class="info-val">★ ${spot.rating} / 5 (${spot.ratingCount})</span></div>
+              <div class="info-row"><span class="info-label">Coordinates</span><span class="info-val">${spot.lat.toFixed(4)}, ${spot.lng.toFixed(4)}</span></div>
+            </div>
+            <button class="btn-outline" style="width:100%;margin-bottom:8px;" onclick="go('map')">View on Map</button>
+            <button class="btn-outline" style="width:100%;" onclick="go('forum')">Discuss in Forum</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  } catch(e) { p.innerHTML = `<div class="empty"><h3>Not found</h3><p>${e.message}</p></div>`; }
+}
+
+async function submitReview(spotId) {
+  try {
+    await api('POST', `/spots/${spotId}/reviews`, {
+      rating: document.getElementById('rv-rating').value,
+      text: document.getElementById('rv-text').value,
+    });
+    toast('Review posted!', 'success');
+    goSpot(spotId);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function toggleFav(spotId) {
+  try {
+    const { saved } = await api('POST', '/favorites', { spotId });
+    const btn = document.getElementById('fav-btn');
+    btn.textContent = saved ? '♥ Saved' : '♡ Save to Favourites';
+    btn.classList.toggle('saved', saved);
+    toast(saved ? 'Saved!' : 'Removed from favourites');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+
+
+
+async function renderForum() {
+  const p = document.getElementById('page-forum');
+  const CATS = [
+    { id:'all',     label:'All Discussions' },
+    { id:'tips',     label:'Camping Tips' },
+    { id:'report',   label:'Trip Reports' },
+    { id:'question', label:'Questions' },
+    { id:'gear',     label:'Gear Recommendations' },
+    { id:'planning', label:'Trip Planning' },
+    { id:'safety',   label:'Safety' },
+  ];
+  p.innerHTML = `
+  <div class="page-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;max-width:1100px;">
+      <div><h1>Community Forum</h1><p>Share tips, ask questions, and report on trails.</p></div>
+      ${STATE.user ? `<button class="hero-btn-p" onclick="openNewPostModal()">+ New Thread</button>` : ''}
+    </div>
+  </div>
+  <div class="container">
+    <div class="forum-layout">
+      <div class="forum-cats card" style="padding:8px;">
+        <div style="padding:8px 14px;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Categories</div>
+        ${CATS.map(c=>`<div class="forum-cat-item${STATE.forums.category===c.id?' on':''}" onclick="setForumCat('${c.id}',this)">${c.label}</div>`).join('')}
+      </div>
+      <div>
+        <div class="forum-toolbar">
+          <div style="font-size:13px;color:var(--mid);" id="forum-count-label"></div>
+          <div class="sort-btns">
+            <button class="sort-btn${STATE.forums.sort==='newest'?' on':''}" onclick="setForumSort('newest',this)">Newest</button>
+            <button class="sort-btn${STATE.forums.sort==='popular'?' on':''}" onclick="setForumSort('popular',this)">Popular</button>
+          </div>
+        </div>
+        <div id="forum-threads"></div>
+      </div>
+    </div>
+  </div>`;
+  await loadForumThreads();
+}
+
+async function loadForumThreads() {
+  const cat = STATE.forums.category !== 'all' ? `&category=${STATE.forums.category}` : '';
+  const { posts } = await api('GET', `/posts?sort=${STATE.forums.sort}${cat}`);
+  const CAT_LABELS = { tips:'Camping Tips', report:'Trip Report', question:'Question', gear:'Gear', planning:'Planning', safety:'Safety' };
+  const CAT_BADGE = { tips:'badge-green', report:'badge-blue', question:'badge-amber', gear:'badge-amber', planning:'badge', safety:'badge-bark' };
+  const countEl = document.getElementById('forum-count-label');
+  if (countEl) countEl.textContent = `${posts.length} thread${posts.length!==1?'s':''}`;
+  const el = document.getElementById('forum-threads');
+  if (!el) return;
+  el.innerHTML = posts.length ? posts.map(post => `
+    <div class="thread-card" onclick="goPost('${post.id}')">
+      <span class="badge ${CAT_BADGE[post.category]||'badge'}" style="margin-bottom:8px;">${CAT_LABELS[post.category]||post.category}</span>
+      <div class="thread-title">${post.title}</div>
+      <div class="thread-preview">${post.body.substring(0,140)}…</div>
+      <div class="thread-meta">
+        <span class="thread-author">by <span>${post.authorName}</span></span>
+        <span>${post.createdAt.slice(0,10)}</span>
+        <div class="thread-stats">
+          <span>♥ ${post.likes.length}</span>
+        </div>
+      </div>
+    </div>`).join('')
+    : `<div class="empty"><h3>No posts yet</h3><p>Be the first to post in this category!</p></div>`;
+}
+
+function setForumCat(cat, el) {
+  STATE.forums.category = cat;
+  document.querySelectorAll('.forum-cat-item').forEach(e => e.classList.remove('on'));
+  el.classList.add('on');
+  loadForumThreads();
+}
+
+function setForumSort(sort, el) {
+  STATE.forums.sort = sort;
+  document.querySelectorAll('.sort-btn').forEach(e => e.classList.remove('on'));
+  el.classList.add('on');
+  loadForumThreads();
+}
+
+function openNewPostModal() {
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>New Thread</h2>
+    <div id="post-alert"></div>
+    <div class="form-group"><label>Category</label>
+      <select id="np-cat">
+        <option value="tips">Camping Tips</option>
+        <option value="report">Trip Report</option>
+        <option value="question">Question</option>
+        <option value="gear">Gear Recommendations</option>
+        <option value="planning">Trip Planning</option>
+        <option value="safety">Safety</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Title</label><input id="np-title" placeholder="Thread title…"/></div>
+    <div class="form-group"><label>Body</label><textarea id="np-body" style="min-height:120px;" placeholder="Share your knowledge or question…"></textarea></div>
+    <button class="btn-green" style="width:100%;padding:11px;" onclick="submitPost()">Post Thread</button>
+  `);
+}
+
+async function submitPost() {
+  try {
+    await api('POST', '/posts', {
+      category: document.getElementById('np-cat').value,
+      title: document.getElementById('np-title').value,
+      body: document.getElementById('np-body').value,
+    });
+    closeModal();
+    toast('Thread posted!', 'success');
+    await loadForumThreads();
+  } catch(e) {
+    document.getElementById('post-alert').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+  }
+}
+
+async function goPost(id) {
+  go('post');
+  const p = document.getElementById('page-post');
+  p.innerHTML = `<div class="loading">Loading…</div>`;
+  try {
+    const { post, comments } = await api('GET', `/posts/${id}`);
+    const CAT_LABELS = { tips:'Camping Tips', report:'Trip Report', question:'Question', gear:'Gear', planning:'Planning', safety:'Safety' };
+    p.innerHTML = `
+    <div class="container">
+      <div class="post-detail">
+        <button class="btn-outline btn-sm" style="margin-bottom:20px;" onclick="go('forum')">← Back to Forum</button>
+        <span class="badge badge-green" style="margin-bottom:12px;">${CAT_LABELS[post.category]||post.category}</span>
+        <h1 style="font-family:var(--font-serif);font-size:clamp(24px,3vw,36px);font-weight:300;margin-bottom:8px;">${post.title}</h1>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:24px;">by <strong style="color:var(--fern);">${post.authorName}</strong> · ${post.createdAt.slice(0,10)}</div>
+        <div class="card" style="padding:24px;margin-bottom:24px;">
+          <p class="post-body-text">${post.body}</p>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:28px;">
+          <button class="like-btn${post.likes.includes(STATE.user?.id)?' liked':''}" id="like-btn" onclick="likePost('${post.id}')">♥ ${post.likes.length} Likes</button>
+        </div>
+        <div class="divider"></div>
+        <h3 style="font-family:var(--font-serif);font-size:20px;margin-bottom:16px;">${comments.length} Comments</h3>
+        <div id="comments-list">
+          ${comments.map(c=>`
+            <div class="comment-item">
+              <div class="comment-header"><span class="comment-author">${c.authorName}</span><span class="comment-date">${c.createdAt.slice(0,10)}</span></div>
+              <p style="font-size:13px;color:var(--mid);line-height:1.7;">${c.body}</p>
+            </div>`).join('')}
+        </div>
+        ${STATE.user ? `
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+          <div class="form-group"><textarea id="comment-body" placeholder="Add a comment…" style="min-height:70px;"></textarea></div>
+          <button class="btn-green btn-sm" onclick="submitComment('${post.id}')">Post Comment</button>
+        </div>` : `<p style="margin-top:16px;font-size:13px;color:var(--muted);">
+          <a style="color:var(--fern);cursor:pointer;" onclick="go('auth','login')">Log in</a> to comment.
+        </p>`}
+      </div>
+    </div>`;
+  } catch(e) { p.innerHTML = `<div class="empty"><h3>Not found</h3></div>`; }
+}
+
+async function likePost(id) {
+  if (!STATE.user) { go('auth','login'); return; }
+  try {
+    const { likes, liked } = await api('POST', `/posts/${id}/like`);
+    const btn = document.getElementById('like-btn');
+    btn.textContent = `♥ ${likes} Likes`;
+    btn.classList.toggle('liked', liked);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function submitComment(postId) {
+  const body = document.getElementById('comment-body').value;
+  if (!body.trim()) return;
+  try {
+    const { comment } = await api('POST', `/posts/${postId}/comments`, { body });
+    const list = document.getElementById('comments-list');
+    list.insertAdjacentHTML('beforeend', `
+      <div class="comment-item">
+        <div class="comment-header"><span class="comment-author">${comment.authorName}</span><span class="comment-date">Just now</span></div>
+        <p style="font-size:13px;color:var(--mid);line-height:1.7;">${comment.body}</p>
+      </div>`);
+    document.getElementById('comment-body').value = '';
+    toast('Comment posted!','success');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+
+
+
+async function renderGroups() {
+  const p = document.getElementById('page-groups');
+  p.innerHTML = `
+  <div class="page-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;max-width:1100px;">
+      <div><h1>Trip Groups</h1><p>Find a group to join or create your own Georgia adventure.</p></div>
+      ${STATE.user ? `<button class="hero-btn-p" onclick="openNewGroupModal()">+ Create Group</button>` : ''}
+    </div>
+  </div>
+  <div class="container"><div class="groups-grid" id="groups-list"><div class="loading">Loading…</div></div></div>`;
+  try {
+    const { groups } = await api('GET', '/groups');
+    const el = document.getElementById('groups-list');
+    el.innerHTML = groups.length ? groups.map(g => `
+      <div class="group-card">
+        <div style="margin-bottom:8px;"><span class="badge ${g.isPublic?'badge-green':'badge-amber'}">${g.isPublic?'Public':'Private'}</span></div>
+        <h3>${g.name}</h3>
+        <div class="group-card-meta">
+          📍 ${g.destination}<br>
+          📅 ${g.date}<br>
+          ${g.desc ? `<span style="font-size:12px;">${g.desc}</span>` : ''}
+        </div>
+        <div class="group-card-footer">
+          <span style="font-size:12px;color:var(--muted);">👥 ${g.members.length} members</span>
+          ${STATE.user && !g.members.includes(STATE.user.id)
+            ? `<button class="btn-green btn-sm" onclick="joinGroup('${g.id}',this)">Join</button>`
+            : g.members?.includes(STATE.user?.id) ? `<span class="badge badge-green">Joined</span>` : ''}
+        </div>
+      </div>`).join('')
+      : `<div class="empty" style="grid-column:1/-1;"><h3>No groups yet</h3><p>Create the first trip group!</p></div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function joinGroup(id, btn) {
+  if (!STATE.user) { go('auth','login'); return; }
+  try {
+    await api('POST', `/groups/${id}/join`);
+    btn.outerHTML = `<span class="badge badge-green">Joined</span>`;
+    toast('Joined group!','success');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function openNewGroupModal() {
+  const REGIONS = ['Kazbegi','Svaneti','Tusheti','Borjomi','Racha','Kakheti','Adjara','Imereti','Samegrelo'];
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>Create Trip Group</h2>
+    <div id="grp-alert"></div>
+    <div class="form-group"><label>Group Name</label><input id="gn-name" placeholder="e.g. Svaneti Summer Trek"/></div>
+    <div class="form-group"><label>Destination Region</label>
+      <select id="gn-dest">${REGIONS.map(r=>`<option>${r}</option>`).join('')}</select>
+    </div>
+    <div class="form-group"><label>Trip Date</label><input id="gn-date" type="date"/></div>
+    <div class="form-group"><label>Description</label><textarea id="gn-desc" placeholder="Tell others about the trip…"></textarea></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="gn-pub" checked style="width:auto;"/>
+      <label for="gn-pub" style="margin:0;cursor:pointer;">Public group (anyone can join)</label>
+    </div>
+    <button class="btn-green" style="width:100%;padding:11px;" onclick="submitGroup()">Create Group</button>
+  `);
+}
+
+async function submitGroup() {
+  try {
+    await api('POST', '/groups', {
+      name: document.getElementById('gn-name').value,
+      destination: document.getElementById('gn-dest').value,
+      date: document.getElementById('gn-date').value,
+      desc: document.getElementById('gn-desc').value,
+      isPublic: document.getElementById('gn-pub').checked,
+    });
+    closeModal();
+    toast('Group created!','success');
+    renderGroups();
+  } catch(e) {
+    document.getElementById('grp-alert').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+  }
+}
+
+
+
+
+async function renderMessages() {
+  if (!STATE.user) { go('auth','login'); return; }
+  const p = document.getElementById('page-messages');
+  p.innerHTML = `
+  <div class="msg-layout">
+    <div class="msg-sidebar">
+      <div class="msg-sidebar-header"><h3>Messages</h3></div>
+      <div id="user-list"><div class="loading" style="padding:20px;font-size:12px;">Loading…</div></div>
+    </div>
+    <div id="msg-chat-area" class="msg-chat">
+      <div class="msg-placeholder">Select a user to start a conversation</div>
+    </div>
+  </div>`;
+  try {
+    const { users } = await api('GET', '/users');
+    const { messages } = await api('GET', '/messages');
+    const ul = document.getElementById('user-list');
+    ul.innerHTML = users.map(u => {
+      const hasUnread = messages.some(m => m.fromId === u.id && !m.read);
+      return `
+        <div class="user-list-item${STATE.msgPeer?.id===u.id?' active':''}" onclick="openChat(${JSON.stringify(u).replace(/"/g,"'")})">
+          <div class="avatar">${u.name[0]}</div>
+          <div><div class="user-name">${u.name}</div><div class="user-region">${u.region}</div></div>
+          ${hasUnread ? `<div class="unread-dot"></div>` : ''}
+        </div>`;
+    }).join('');
+    if (STATE.msgPeer) openChat(STATE.msgPeer);
+  } catch(e) {}
+}
+
+async function openChat(user) {
+  STATE.msgPeer = user;
+  document.querySelectorAll('.user-list-item').forEach(el => el.classList.remove('active'));
+  const chat = document.getElementById('msg-chat-area');
+  if (!chat) return;
+  const { messages } = await api('GET', '/messages');
+  const thread = messages.filter(m =>
+    (m.fromId === STATE.user.id && m.toId === user.id) ||
+    (m.fromId === user.id && m.toId === STATE.user.id)
+  );
+  chat.innerHTML = `
+    <div class="msg-chat-header">
+      <div class="avatar">${user.name[0]}</div>
+      <div><div style="font-size:14px;font-weight:500;">${user.name}</div><div style="font-size:11px;color:var(--muted);">${user.region} · ${user.level}</div></div>
+    </div>
+    <div class="chat-messages" id="chat-msgs">
+      ${thread.length ? thread.map(m => `
+        <div>
+          <div class="msg-bubble ${m.fromId===STATE.user.id?'mine':'theirs'}">${m.body}
+            <div class="msg-bubble-time">${m.createdAt.slice(11,16)}</div>
+          </div>
+        </div>`).join('')
+        : `<div style="text-align:center;color:var(--muted);font-size:13px;padding:20px;">Start the conversation!</div>`}
+    </div>
+    <div class="msg-input-area">
+      <input id="msg-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMsg('${user.id}')"/>
+      <button class="btn-green" onclick="sendMsg('${user.id}')">Send</button>
+    </div>`;
+  const msgs = document.getElementById('chat-msgs');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function sendMsg(toId) {
+  const input = document.getElementById('msg-input');
+  const body = input?.value.trim();
+  if (!body) return;
+  try {
+    const { message } = await api('POST', '/messages', { toId, body });
+    input.value = '';
+    const msgs = document.getElementById('chat-msgs');
+    msgs.insertAdjacentHTML('beforeend', `
+      <div>
+        <div class="msg-bubble mine">${message.body}
+          <div class="msg-bubble-time">Just now</div>
+        </div>
+      </div>`);
+    msgs.scrollTop = msgs.scrollHeight;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+
+
+
+async function renderProfile() {
+  if (!STATE.user) { go('auth','login'); return; }
+  const p = document.getElementById('page-profile');
+  const u = STATE.user;
+  p.innerHTML = `
+  <div class="profile-header">
+    <div class="profile-avatar-big">${u.name[0]}</div>
+    <div class="profile-info">
+      <h2>${u.name}</h2>
+      <p>${u.region} · ${u.level} · ${u.email}</p>
+      <p style="margin-top:4px;">${u.bio||'No bio yet.'}</p>
+    </div>
+  </div>
+  <div class="profile-body">
+    <div class="profile-tabs">
+      <div class="ptab${STATE.profileTab==='info'?' on':''}" onclick="setProfileTab('info',this)">Profile</div>
+      <div class="ptab${STATE.profileTab==='favs'?' on':''}" onclick="setProfileTab('favs',this)">Saved Spots</div>
+    </div>
+    <div id="profile-tab-content"></div>
+  </div>`;
+  renderProfileTab();
+}
+
+async function renderProfileTab() {
+  const el = document.getElementById('profile-tab-content');
+  if (!el) return;
+  if (STATE.profileTab === 'info') {
+    const u = STATE.user;
+    const REGIONS = ['Tbilisi','Kazbegi','Svaneti','Tusheti','Borjomi','Racha','Kakheti','Adjara','Imereti','Samegrelo'];
+    el.innerHTML = `
+      <div style="max-width:480px;">
+        <h3 style="font-family:var(--font-serif);font-size:20px;margin-bottom:18px;">Edit Profile</h3>
+        <div id="profile-alert"></div>
+        <div class="form-group"><label>Name</label><input id="pr-name" value="${u.name}"/></div>
+        <div class="form-group"><label>Bio</label><textarea id="pr-bio">${u.bio||''}</textarea></div>
+        <div class="grid-2">
+          <div class="form-group"><label>Region</label>
+            <select id="pr-region">${REGIONS.map(r=>`<option${r===u.region?' selected':''}>${r}</option>`).join('')}</select>
+          </div>
+          <div class="form-group"><label>Hiking Level</label>
+            <select id="pr-level">
+              ${['Beginner','Intermediate','Advanced','Expert'].map(l=>`<option${l===u.level?' selected':''}>${l}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <button class="btn-green" onclick="saveProfile()">Save Changes</button>
+      </div>`;
+  } else {
+    el.innerHTML = `<div class="loading">Loading saved spots…</div>`;
+    try {
+      const { spots } = await api('GET', '/favorites');
+      const DIFF_BADGE = { Easy:'badge-green', Moderate:'badge-amber', Challenging:'badge-amber', Hard:'badge-bark', Expert:'badge-bark' };
+      el.innerHTML = spots.length
+        ? `<div class="grid-3">${spots.map(s=>`
+            <div class="spot-card" onclick="goSpot('${s.id}')">
+              <div class="spot-card-img">${s.type==='camp'?'🏕️':'🥾'}</div>
+              <div class="spot-card-body">
+                <h3>${s.name}</h3>
+                <div class="spot-card-meta">${s.region}</div>
+                <div class="spot-card-row"><span class="badge ${DIFF_BADGE[s.difficulty]||''}">${s.difficulty}</span><span class="rating">★ ${s.rating||'–'}</span></div>
+              </div>
+            </div>`).join('')}</div>`
+        : `<div class="empty"><h3>No saved spots</h3><p>Browse the map and save your favourite locations.</p></div>`;
+    } catch(e) { el.innerHTML = `<div class="empty"><p>${e.message}</p></div>`; }
+  }
+}
+
+function setProfileTab(tab, el) {
+  STATE.profileTab = tab;
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  renderProfileTab();
+}
+
+async function saveProfile() {
+  try {
+    const { user } = await api('PUT', '/users/profile', {
+      name: document.getElementById('pr-name').value,
+      bio: document.getElementById('pr-bio').value,
+      region: document.getElementById('pr-region').value,
+      level: document.getElementById('pr-level').value,
+    });
+    STATE.user = user;
+    localStorage.setItem('cm_user', JSON.stringify(user));
+    toast('Profile updated!','success');
+    renderProfile();
+  } catch(e) {
+    const el = document.getElementById('profile-alert');
+    if (el) el.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+  }
+}
+
+
+
+
+async function renderAdmin() {
+  if (!STATE.user || STATE.user.role !== 'admin') { go('home'); return; }
+  const p = document.getElementById('page-admin');
+  p.innerHTML = `
+  <div class="admin-layout">
+    <div class="admin-sidebar">
+      <div style="padding:16px 20px;font-family:var(--font-serif);font-size:16px;color:var(--off);border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px;">Admin Panel</div>
+      <div class="admin-nav-item${STATE.adminTab==='stats'?' on':''}" onclick="setAdminTab('stats',this)">📊 Dashboard</div>
+      <div class="admin-nav-item${STATE.adminTab==='users'?' on':''}" onclick="setAdminTab('users',this)">👥 Users</div>
+      <div class="admin-nav-item${STATE.adminTab==='spots'?' on':''}" onclick="setAdminTab('spots',this)">📍 All Spots</div>
+      <div class="admin-nav-item${STATE.adminTab==='pending'?' on':''}" onclick="setAdminTab('pending',this)">⏳ Pending</div>
+      <div class="admin-nav-item${STATE.adminTab==='posts'?' on':''}" onclick="setAdminTab('posts',this)">💬 Forum Posts</div>
+    </div>
+    <div class="admin-main" id="admin-main"></div>
+  </div>`;
+  renderAdminTab();
+}
+
+async function renderAdminTab() {
+  const el = document.getElementById('admin-main');
+  if (!el) return;
+  if (STATE.adminTab === 'stats') {
+    try {
+      const s = await api('GET', '/admin/stats');
+      el.innerHTML = `
+        <h2 style="font-family:var(--font-serif);font-size:24px;margin-bottom:20px;">Dashboard</h2>
+        <div class="stat-cards">
+          <div class="stat-card"><div class="stat-card-n">${s.users}</div><div class="stat-card-l">Users</div></div>
+          <div class="stat-card"><div class="stat-card-n">${s.spots}</div><div class="stat-card-l">Approved Spots</div></div>
+          <div class="stat-card"><div class="stat-card-n" style="color:var(--amber);">${s.pending||0}</div><div class="stat-card-l">Pending Spots</div></div>
+          <div class="stat-card"><div class="stat-card-n">${s.posts}</div><div class="stat-card-l">Forum Posts</div></div>
+          <div class="stat-card"><div class="stat-card-n">${s.reviews}</div><div class="stat-card-l">Reviews</div></div>
+          <div class="stat-card"><div class="stat-card-n">${s.groups}</div><div class="stat-card-l">Trip Groups</div></div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);">Messages sent: ${s.messages}</p>`;
+    } catch(e) { el.innerHTML = `<p>${e.message}</p>`; }
+  } else if (STATE.adminTab === 'users') {
+    const { users } = await api('GET', '/admin/users');
+    el.innerHTML = `
+      <h2 style="font-family:var(--font-serif);font-size:24px;margin-bottom:20px;">All Users (${users.length})</h2>
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Region</th><th>Level</th><th>Role</th><th>Joined</th><th>Action</th></tr></thead>
+        <tbody>${users.map(u=>`<tr>
+          <td>${u.name}</td><td>${u.email}</td><td>${u.region}</td><td>${u.level}</td>
+          <td><span class="badge ${u.role==='admin'?'badge-bark':''}">${u.role}</span></td>
+          <td>${u.createdAt.slice(0,10)}</td>
+          <td>${u.role!=='admin'?`<button class="btn-sm" style="background:#7a3020;color:#fff;border:none;border-radius:var(--rad);cursor:pointer;padding:4px 10px;" onclick="adminDeleteUser('${u.id}',this)">Delete</button>`:'–'}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+  } else if (STATE.adminTab === 'spots') {
+    const { spots } = await api('GET', '/spots');
+    el.innerHTML = `
+      <h2 style="font-family:var(--font-serif);font-size:24px;margin-bottom:20px;">All Spots (${spots.length})</h2>
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Type</th><th>Region</th><th>Difficulty</th><th>Rating</th><th>Added</th><th>Action</th></tr></thead>
+        <tbody>${spots.map(s=>`<tr>
+          <td><a style="color:var(--fern);cursor:pointer;" onclick="goSpot('${s.id}')">${s.name}</a></td>
+          <td>${s.type}</td><td>${s.region}</td><td>${s.difficulty}</td>
+          <td>★ ${s.rating}</td><td>${s.createdAt.slice(0,10)}</td>
+          <td><button class="btn-sm" style="background:#7a3020;color:#fff;border:none;border-radius:var(--rad);cursor:pointer;padding:4px 10px;" onclick="adminDeleteSpot('${s.id}',this)">Delete</button></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+  } else if (STATE.adminTab === 'pending') {
+    try {
+      const { spots } = await api('GET', '/admin/spots/pending');
+      el.innerHTML = `
+        <h2 style="font-family:var(--font-serif);font-size:24px;margin-bottom:20px;">Pending Submissions (${spots.length})</h2>
+        ${spots.length ? `<table class="data-table">
+          <thead><tr><th>Name</th><th>Type</th><th>Region</th><th>Submitted</th><th>Actions</th></tr></thead>
+          <tbody>${spots.map(s=>`<tr>
+            <td>${s.name}</td><td>${s.type}</td><td>${s.region}</td><td>${s.createdAt.slice(0,10)}</td>
+            <td style="display:flex;gap:6px;">
+              <button class="btn-sm btn-green" style="padding:4px 10px;" onclick="adminApproveSpot('${s.id}',this)">✓ Approve</button>
+              <button class="btn-sm" style="background:#7a3020;color:#fff;border:none;border-radius:var(--rad);cursor:pointer;padding:4px 10px;" onclick="adminDeleteSpot('${s.id}',this)">✗ Reject</button>
+            </td>
+          </tr>`).join('')}</tbody>
+        </table>` : '<div class="empty"><h3>No pending submissions</h3><p>All caught up!</p></div>'}`;
+    } catch(e) { el.innerHTML = `<p>${e.message}</p>`; }
+  } else if (STATE.adminTab === 'posts') {
+    try {
+      const { posts } = await api('GET', '/admin/posts');
+      el.innerHTML = `
+        <h2 style="font-family:var(--font-serif);font-size:24px;margin-bottom:20px;">Forum Posts (${posts.length})</h2>
+        <table class="data-table">
+          <thead><tr><th>Title</th><th>Author</th><th>Category</th><th>Likes</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody>${posts.map(p=>`<tr>
+            <td style="max-width:280px;"><a style="color:var(--fern);cursor:pointer;" onclick="goPost('${p.id}')">${p.title}</a></td>
+            <td>${p.authorName}</td><td>${p.category}</td><td>${p.likes.length}</td>
+            <td>${p.createdAt.slice(0,10)}</td>
+            <td><button class="btn-sm" style="background:#7a3020;color:#fff;border:none;border-radius:var(--rad);cursor:pointer;padding:4px 10px;" onclick="adminDeletePost('${p.id}',this)">Delete</button></td>
+          </tr>`).join('')}</tbody>
+        </table>`;
+    } catch(e) { el.innerHTML = `<p>${e.message}</p>`; }
+  }
+}
+
+function setAdminTab(tab, el) {
+  STATE.adminTab = tab;
+  document.querySelectorAll('.admin-nav-item').forEach(i => i.classList.remove('on'));
+  el.classList.add('on');
+  renderAdminTab();
+}
+
+async function adminDeleteUser(id, btn) {
+  if (!confirm('Delete this user? This cannot be undone.')) return;
+  try {
+    await api('DELETE', `/admin/users/${id}`);
+    btn.closest('tr').remove();
+    toast('User deleted', 'success');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function adminDeleteSpot(id, btn) {
+  if (!confirm('Delete this spot?')) return;
+  try {
+    await api('DELETE', `/spots/${id}`);
+    btn.closest('tr').remove();
+    toast('Spot deleted', 'success');
+    STATE.spots = STATE.spots.filter(s => s.id !== id);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function adminApproveSpot(id, btn) {
+  try {
+    await api('POST', `/spots/${id}/approve`);
+    btn.closest('tr').remove();
+    toast('Spot approved and published!', 'success');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function adminDeletePost(id, btn) {
+  if (!confirm('Delete this forum post and all its comments?')) return;
+  try {
+    await api('DELETE', `/posts/${id}`);
+    btn.closest('tr').remove();
+    toast('Post deleted', 'success');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+
+
+
+function openModal(html) {
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay') && !e.target.classList.contains('modal-close')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+
+
+
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+
+
+
+renderNav();
+go('home');
+</script>
+</body>
+</html>
