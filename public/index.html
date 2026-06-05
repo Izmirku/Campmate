@@ -284,17 +284,36 @@ label{font-size:12px;color:var(--mid);margin-bottom:4px;display:block;}
 
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
-  .hero-body{padding:0 24px;}
-  .hero-stats{right:24px;}
-  .map-sidebar{width:260px;}
-  .forum-layout{grid-template-columns:1fr;}.forum-cats{display:none;}
-  .grid-3,.grid-4{grid-template-columns:repeat(2,1fr);}
+  .hero-body{padding:0 20px;}
+  .hero-h{font-size:clamp(42px,12vw,72px);}
+  .hero-stats{position:static;margin:24px 20px 0;flex-wrap:wrap;}
+  .hero-btns{flex-direction:column;}
+  .hero-btn-p,.hero-btn-g{width:100%;text-align:center;}
+  .map-layout{flex-direction:column;}
+  .map-sidebar{width:100%;max-height:240px;border-right:none;border-bottom:1px solid var(--border);}
+  #map-container{min-height:320px;}
+  .forum-layout{grid-template-columns:1fr;}
+  .forum-cats{display:none;}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
   .spot-grid{grid-template-columns:1fr;}
+  .spot-content{padding:20px 16px;}
+  .spot-hero{padding:20px 16px;height:200px;}
   .admin-layout{grid-template-columns:1fr;}
   .admin-sidebar{display:none;}
-  .msg-sidebar{width:200px;}
-  .profile-header{flex-direction:column;align-items:flex-start;}
-  .profile-body{padding:24px;}
+  .stat-cards{grid-template-columns:repeat(2,1fr);}
+  .msg-layout{flex-direction:column;}
+  .msg-sidebar{width:100%;max-height:200px;border-right:none;border-bottom:1px solid var(--border);}
+  .msg-layout{height:auto;min-height:calc(100vh - 58px);}
+  .chat-messages{min-height:200px;}
+  .profile-header{flex-direction:column;align-items:flex-start;padding:24px 20px;}
+  .profile-body{padding:20px 16px;}
+  .nav-links{gap:0;}
+  .nav-link{padding:6px 8px;font-size:10px;}
+  .container{padding:0 16px;}
+  .home-section{padding:48px 0;}
+  .groups-grid{grid-template-columns:1fr;}
+  .page-header{padding:24px 16px 20px;}
+  .forum-toolbar{flex-direction:column;gap:10px;align-items:flex-start;}
 }
 </style>
 </head>
